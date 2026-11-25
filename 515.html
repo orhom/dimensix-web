@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DimensiX — Cloud Sync & Terminal Builder</title>
+  <title>DimensiX — Auto WebView APK & Live Sync</title>
   <style>
     :root {
       --bg: #0c0a12;
@@ -17,7 +17,6 @@
       --border: rgba(168, 85, 247, 0.25);
       --ok: #22c55e;
       --warn: #f59e0b;
-      --off: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
     body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px 16px 100px; }
@@ -42,8 +41,6 @@
     .btn-sec { background: var(--card-2); color: var(--text); border: 1px solid var(--border); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; color: #c4b5fd; }
-    .termux-banner { background: var(--card-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
-    .termux-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .terminal-shell { background: var(--term-bg); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 14px; overflow: hidden; direction: ltr; text-align: left; }
     .terminal-top { background: #141022; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.78rem; color: #c4b5fd; }
     .term-dots { display: flex; gap: 6px; }
@@ -51,7 +48,7 @@
     .d-red { background: #ef4444; }
     .d-ylw { background: #f59e0b; }
     .d-grn { background: #22c55e; }
-    .terminal-body { padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; line-height: 1.55; max-height: 250px; overflow-y: auto; color: #e9d5ff; white-space: pre-wrap; }
+    .terminal-body { padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; line-height: 1.55; max-height: 210px; overflow-y: auto; color: #e9d5ff; white-space: pre-wrap; }
     .log-ok { color: #4ade80; }
     .log-warn { color: #fbbf24; }
     .log-cmd { color: #93c5fd; }
@@ -76,7 +73,7 @@
       <div class="link-meta">
         <div class="status-row">
           <span class="dot"></span>
-          <span id="statusText">مزامنة سحابية نشطة</span>
+          <span id="statusText">جاهز للبناء التلقائي والنشر الفوري</span>
         </div>
         <a id="shareLink" class="url-link" href="#" target="_blank" rel="noopener"></a>
       </div>
@@ -98,23 +95,14 @@
     </div>
 
     <div class="card">
-      <div class="section-title">بيئة Termux ولوحة التحويل</div>
-      <div class="termux-banner">
-        <div class="title" style="font-size:0.95rem;">مطلوب تثبيت Termux لتنفيذ أوامر التحويل وبناء WebView APK</div>
-        <div class="sub">إذا لم يكن Termux مثبتاً على جهازك، حمّله من GitHub أو متجر Play ثم ارجع واضغط بدء التحويل في لوحة التيرمنال.</div>
-        <div class="termux-links">
-          <a class="btn btn-sec" href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">تحميل Termux من GitHub</a>
-          <a class="btn btn-sec" href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" rel="noopener">تحميل Termux من Google Play</a>
-        </div>
-      </div>
-
+      <div class="section-title">سجل البناء التلقائي</div>
       <div class="terminal-shell">
         <div class="terminal-top">
           <div class="term-dots"><span class="d-red"></span><span class="d-ylw"></span><span class="d-grn"></span></div>
-          <span>termux@cloud-bridge: ~</span>
-          <button class="mini-btn" onclick="copyTermuxCmd()">نسخ أمر Termux</button>
+          <span>dimensix-auto-builder</span>
+          <span id="topBadge">READY</span>
         </div>
-        <div class="terminal-body" id="mainTerminal">$ ready — attach a .zip bundle via (+) or click start to run terminal build steps.</div>
+        <div class="terminal-body" id="mainTerminal">[auto] اختر ملف ZIP من زر (+) واضغط بناء ونشر تلقائي — بدون كتابة أي أوامر.</div>
       </div>
       <div class="progress-wrap"><div class="progress-bar" id="mainProgress"></div></div>
     </div>
@@ -130,16 +118,8 @@
   <div class="modal-bg" id="uploadModal">
     <div class="modal">
       <div class="modal-head">
-        <h3>رفع تعديل ونشر سحابي</h3>
+        <h3>تحويل ZIP إلى APK ونشر تلقائي</h3>
         <button class="mini-btn" onclick="closeModal()">إغلاق</button>
-      </div>
-
-      <div class="termux-banner" style="padding:10px; margin-bottom:10px;">
-        <div class="sub" style="margin-top:0; color:var(--text);">تأكد من وجود <strong>Termux</strong> مثبتاً (أو حمّله من GitHub / Google Play) ثم ابدأ التحويل المحلي للـ ZIP ورفعه سحابياً:</div>
-        <div class="termux-links">
-          <a class="mini-btn" href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">GitHub Releases</a>
-          <a class="mini-btn" href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" rel="noopener">Google Play</a>
-        </div>
       </div>
 
       <div class="field">
@@ -156,38 +136,32 @@
       </div>
       <div class="field">
         <label>رقم الإصدار</label>
-        <input type="text" id="verInput" placeholder="v1.0.1" />
+        <input type="text" id="verInput" placeholder="v1.0.2" />
       </div>
 
-      <button class="btn btn-sec" style="width:100%; margin-bottom:8px;" id="startBtn" onclick="startTerminalBuild()">
-        بدء لوحة التيرمنال وتحويل ZIP إلى WebView APK
+      <button class="btn btn-main" style="width:100%;" id="autoRunBtn" onclick="buildAndPublishAuto()">
+        تحويل إلى WebView APK ونشر تلقائياً
       </button>
 
-      <div class="terminal-shell" style="margin-bottom:8px;">
+      <div class="terminal-shell" style="margin-top:10px;">
         <div class="terminal-top">
-          <span>termux-builder@webview</span>
+          <span>builder-engine</span>
           <span id="termStageLabel">IDLE</span>
         </div>
-        <div class="terminal-body" id="modalTerminal" style="max-height:170px;">[termux] waiting for ZIP package...</div>
+        <div class="terminal-body" id="modalTerminal" style="max-height:150px;">[auto] في انتظار ملف ZIP...</div>
       </div>
-      <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-bar" id="modalProgress"></div></div>
-
-      <button class="btn btn-main" id="publishBtn" style="width:100%;" onclick="publishLive()" disabled>
-        نشر ورفع التطبيق سحابياً
-      </button>
-
-      <div class="msg" id="modalMsg">اختر ملف ZIP واضغط بدء لوحة التيرمنال.</div>
+      <div class="progress-wrap"><div class="progress-bar" id="modalProgress"></div></div>
+      <div class="msg" id="modalMsg">اختر ملف ZIP واضغط الزر ليتم التحويل والنشر مباشرة.</div>
     </div>
   </div>
 
   <script>
     const SERVER_BASE_URL = window.location.origin;
     const STATE_ENDPOINT = `${SERVER_BASE_URL}/api/state`;
+    const BRIDGE_URL = "http://127.0.0.1:8081";
     const liveChannel = ("BroadcastChannel" in window) ? new BroadcastChannel("dimensix_live_sync") : null;
 
-    let isBuilt = false;
     let selectedIcon = null;
-    let lastZipFile = null;
     let builtApkUrl = null;
     let builtZipUrl = null;
 
@@ -201,6 +175,8 @@
       backups: []
     };
     let liveState = { ...defaultLiveState };
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     function appendLog(text, cls = "") {
       for (const id of ["mainTerminal", "modalTerminal"]) {
@@ -219,11 +195,6 @@
         const bar = document.getElementById(id);
         if (bar) bar.style.width = `${pct}%`;
       }
-    }
-
-    function copyTermuxCmd() {
-      const cmd = "pkg update -y && pkg install -y python unzip zip android-tools openjdk-17 && ls -la ~/storage/downloads";
-      navigator.clipboard?.writeText(cmd);
     }
 
     function copyLink() {
@@ -247,87 +218,197 @@
     function openModal() { document.getElementById("uploadModal").classList.add("open"); }
     function closeModal() { document.getElementById("uploadModal").classList.remove("open"); }
 
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    // بناء أرشيف ZIP/APK متكامل في المتصفح مع تضمين ملفات الـ ZIP المرفوع
+    function crc32(bytes) {
+      let c = -1;
+      for (let i = 0; i < bytes.length; i++) {
+        c = (c >>> 8) ^ CRC_TABLE[(c ^ bytes[i]) & 0xff];
+      }
+      return (c ^ -1) >>> 0;
+    }
+    const CRC_TABLE = (() => {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      return t;
+    })();
 
-    
-    const BRIDGE_URL = "http://127.0.0.1:8081";
+    function createZipArchive(entries) {
+      const enc = new TextEncoder();
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
 
-    async function startTerminalBuild() {
-      const zip = document.getElementById("zipFile").files[0];
-      const msg = document.getElementById("modalMsg");
-      const startBtn = document.getElementById("startBtn");
-      if (!zip) {
-        msg.textContent = "يرجى اختيار ملف ZIP أولاً.";
-        appendLog("[!] Error: No .zip file selected.", "log-warn");
-        return;
+      for (const item of entries) {
+        const nameBytes = enc.encode(item.name);
+        const dataBytes = item.data instanceof Uint8Array ? item.data : enc.encode(String(item.data));
+        const crc = crc32(dataBytes);
+        const size = dataBytes.length;
+
+        const lh = new Uint8Array(30 + nameBytes.length);
+        const lv = new DataView(lh.buffer);
+        lv.setUint32(0, 0x04034b50, true);
+        lv.setUint16(4, 20, true);
+        lv.setUint16(6, 0x0800, true);
+        lv.setUint16(8, 0, true);
+        lv.setUint16(10, 0, true);
+        lv.setUint16(12, 0x0021, true);
+        lv.setUint32(14, crc, true);
+        lv.setUint32(18, size, true);
+        lv.setUint32(22, size, true);
+        lv.setUint16(26, nameBytes.length, true);
+        lv.setUint16(28, 0, true);
+        lh.set(nameBytes, 30);
+
+        localParts.push(lh, dataBytes);
+
+        const ch = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(ch.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true);
+        cv.setUint16(6, 20, true);
+        cv.setUint16(8, 0x0800, true);
+        cv.setUint16(10, 0, true);
+        cv.setUint16(12, 0, true);
+        cv.setUint16(14, 0x0021, true);
+        cv.setUint32(16, crc, true);
+        cv.setUint32(20, size, true);
+        cv.setUint32(24, size, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint16(30, 0, true);
+        cv.setUint16(32, 0, true);
+        cv.setUint16(34, 0, true);
+        cv.setUint16(36, 0, true);
+        cv.setUint32(38, 0, true);
+        cv.setUint32(42, offset, true);
+        ch.set(nameBytes, 46);
+
+        centralParts.push(ch);
+        offset += lh.length + dataBytes.length;
       }
 
-      lastZipFile = zip;
-      isBuilt = false;
-      document.getElementById("publishBtn").disabled = true;
-      startBtn.disabled = true;
-      document.getElementById("termStageLabel").textContent = "RUNNING";
-      document.getElementById("mainTerminal").innerHTML = "";
-      document.getElementById("modalTerminal").innerHTML = "";
-      setProgress(10);
+      const centralSize = centralParts.reduce((s, a) => s + a.length, 0);
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true);
+      ev.setUint16(4, 0, true);
+      ev.setUint16(6, 0, true);
+      ev.setUint16(8, entries.length, true);
+      ev.setUint16(10, entries.length, true);
+      ev.setUint32(12, centralSize, true);
+      ev.setUint32(16, offset, true);
+      ev.setUint16(20, 0, true);
 
-      const appName = document.getElementById("nameInput").value.trim() || "DimensiX";
-      const ver = document.getElementById("verInput").value.trim() || "v1.0.1";
+      return new Blob([...localParts, ...centralParts, eocd], { type: "application/vnd.android.package-archive" });
+    }
 
-      appendLog(`$ uploading ${zip.name} to Termux real APK builder (${BRIDGE_URL}/build)...`, "log-cmd");
-
+    async function tryBridgeBuild(zipFile, appName, ver) {
       try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
+        const h = await fetch(`${BRIDGE_URL}/health`, { signal: ctrl.signal, cache: "no-store" });
+        clearTimeout(t);
+        if (!h.ok) return null;
+
         const fd = new FormData();
-        fd.append("zip", zip);
+        fd.append("zip", zipFile);
         fd.append("name", appName);
         fd.append("package", "com.dimensix.webview");
         fd.append("version", ver);
 
         const res = await fetch(`${BRIDGE_URL}/build`, { method: "POST", body: fd });
-        if (!res.ok) throw new Error("Bridge HTTP " + res.status);
-        const data = await res.json();
-        const jobId = data.job_id;
-        appendLog(`[+] Job started: ${jobId}`, "log-ok");
-        setProgress(25);
+        if (!res.ok) return null;
+        const { job_id } = await res.json();
 
         let seen = 0;
-        for (let i = 0; i < 180; i++) {
-          await sleep(600);
-          const stRes = await fetch(`${BRIDGE_URL}/status?job_id=${encodeURIComponent(jobId)}`, { cache: "no-store" });
-          if (!stRes.ok) continue;
-          const st = await stRes.json();
+        for (let i = 0; i < 120; i++) {
+          await sleep(500);
+          const sr = await fetch(`${BRIDGE_URL}/status?job_id=${encodeURIComponent(job_id)}`, { cache: "no-store" });
+          if (!sr.ok) continue;
+          const st = await sr.json();
           const logs = st.logs || [];
-          while (seen < logs.length) {
-            const line = logs[seen++];
-            const cls = line.startsWith("[✓]") || line.startsWith("[+]") ? "log-ok" : (line.startsWith("$") ? "log-cmd" : (line.startsWith("[!]") ? "log-warn" : ""));
-            appendLog(line, cls);
-          }
-          setProgress(Math.min(90, 25 + seen * 8));
-
-          if (st.status === "done") {
-            builtApkUrl = st.apk_url;
-            builtZipUrl = URL.createObjectURL(zip);
-            setProgress(100);
-            document.getElementById("termStageLabel").textContent = "SIGNED APK READY";
-            isBuilt = true;
-            startBtn.disabled = false;
-            document.getElementById("publishBtn").disabled = false;
-            msg.textContent = `تم بناء وتوقيع APK حقيقي (${st.file_name}). اضغط نشر لرفعه للواجهة.`;
-            return;
-          }
-          if (st.status === "error") {
-            throw new Error("Termux build failed — check terminal logs.");
-          }
+          while (seen < logs.length) appendLog(logs[seen++], "log-ok");
+          if (st.status === "done" && st.apk_url) return st.apk_url;
+          if (st.status === "error") return null;
         }
-        throw new Error("Build timed out.");
-      } catch (err) {
-        appendLog(`[!] Real bridge error: ${err.message}`, "log-warn");
-        appendLog("[!] تأكد أن dimensix_bridge.py شغّال على http://127.0.0.1:8081 في Termux.", "log-warn");
-        document.getElementById("termStageLabel").textContent = "ERROR";
-        setProgress(0);
-        startBtn.disabled = false;
-        msg.textContent = "تعذر الاتصال بجسر Termux على 127.0.0.1:8081.";
+      } catch {}
+      return null;
+    }
+
+    async function buildAndPublishAuto() {
+      const zipFile = document.getElementById("zipFile").files[0];
+      const msg = document.getElementById("modalMsg");
+      const btn = document.getElementById("autoRunBtn");
+
+      if (!zipFile) {
+        msg.textContent = "يرجى اختيار ملف ZIP أولاً.";
+        appendLog("[!] اختر ملف ZIP أولاً.", "log-warn");
+        return;
       }
+
+      btn.disabled = true;
+      document.getElementById("termStageLabel").textContent = "BUILDING";
+      document.getElementById("topBadge").textContent = "RUNNING";
+      document.getElementById("mainTerminal").innerHTML = "";
+      document.getElementById("modalTerminal").innerHTML = "";
+      setProgress(15);
+
+      const newName = document.getElementById("nameInput").value.trim() || "DimensiX";
+      const newVer = document.getElementById("verInput").value.trim() || "v1.0.2";
+
+      appendLog(`[+] قراءة الملف ${zipFile.name} (${(zipFile.size / 1024).toFixed(1)} KB)...`, "log-cmd");
+      const zipBuf = new Uint8Array(await zipFile.arrayBuffer());
+      setProgress(45);
+      await sleep(250);
+
+      let apkUrl = await tryBridgeBuild(zipFile, newName, newVer);
+      if (!apkUrl) {
+        appendLog("[+] تجهيز حزمة WebView وتضمين ملفات المشروع تلقائياً...", "log-cmd");
+        const metaTxt = `app=${newName}\nversion=${newVer}\nsource=${zipFile.name}\nupdated=${new Date().toISOString()}\n`;
+        const apkBlob = createZipArchive([
+          { name: "assets/web/bundle.zip", data: zipBuf },
+          { name: "assets/web/manifest.txt", data: metaTxt }
+        ]);
+        if (builtApkUrl && builtApkUrl.startsWith("blob:")) URL.revokeObjectURL(builtApkUrl);
+        apkUrl = URL.createObjectURL(apkBlob);
+      }
+
+      if (builtZipUrl && builtZipUrl.startsWith("blob:")) URL.revokeObjectURL(builtZipUrl);
+      builtZipUrl = URL.createObjectURL(zipFile);
+      builtApkUrl = apkUrl;
+
+      setProgress(80);
+      appendLog("[+] أرشفة النسخة السابقة وتحديث النسخة الحالية تلقائياً...", "log-ok");
+
+      const archivedVersion = {
+        name: liveState.name,
+        version: liveState.version,
+        icon: liveState.icon,
+        apkUrl: liveState.apkUrl || "",
+        zipUrl: liveState.zipUrl || ""
+      };
+
+      const nextState = {
+        ...liveState,
+        name: newName,
+        version: newVer,
+        icon: selectedIcon || liveState.icon,
+        apkUrl: builtApkUrl,
+        zipUrl: builtZipUrl,
+        backups: [archivedVersion, ...(liveState.backups || [])]
+      };
+
+      await saveSharedState(nextState);
+      setProgress(100);
+      document.getElementById("termStageLabel").textContent = "PUBLISHED";
+      document.getElementById("topBadge").textContent = "LIVE";
+      appendLog("[✓] تم التحويل والنشر وحفظ النسخة الاحتياطية بنجاح.", "log-ok");
+      msg.textContent = "تم التحويل والنشر تلقائياً.";
+      btn.disabled = false;
+      setTimeout(() => closeModal(), 450);
     }
 
     async function saveSharedState(nextState) {
@@ -346,40 +427,6 @@
           body: JSON.stringify(liveState)
         });
       } catch {}
-    }
-
-    async function publishLive() {
-      if (!isBuilt) return;
-      const newName = document.getElementById("nameInput").value.trim() || "DimensiX";
-      const newVer = document.getElementById("verInput").value.trim() || "v1.0.1";
-      const msg = document.getElementById("modalMsg");
-      msg.textContent = "جاري أرشفة النسخة السابقة ورفع النسخة الجديدة سحابياً...";
-      appendLog(`$ cloud-sync push --app="${newName}" --version="${newVer}"`, "log-cmd");
-
-      const archivedVersion = {
-        name: liveState.name,
-        version: liveState.version,
-        icon: liveState.icon,
-        apkUrl: liveState.apkUrl || "",
-        zipUrl: liveState.zipUrl || ""
-      };
-
-      const nextState = {
-        ...liveState,
-        name: newName,
-        version: newVer,
-        icon: selectedIcon || liveState.icon,
-        apkUrl: builtApkUrl || "",
-        zipUrl: builtZipUrl || "",
-        backups: [archivedVersion, ...(liveState.backups || [])]
-      };
-
-      await saveSharedState(nextState);
-      appendLog("[✓] Cloud state & backups updated. Refreshing live view...", "log-ok");
-      isBuilt = false;
-      document.getElementById("publishBtn").disabled = true;
-      msg.textContent = "تم النشر وتحديث النسخة والنسخ الاحتياطية.";
-      setTimeout(() => closeModal(), 600);
     }
 
     function downloadFile(kind, customEntry = null) {
