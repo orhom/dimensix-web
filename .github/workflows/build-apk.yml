@@ -48,7 +48,6 @@ jobs:
             unzip -q -o uploaded-site.zip -d work_src
           fi
 
-          # إذا كان الأرشيف يحتوي مجلداً واحداً بداخله المشروع، انقله إلى جذر work_src
           SUBDIRS=$(find work_src -mindepth 1 -maxdepth 1 -type d ! -name "__MACOSX")
           COUNT=$(echo "$SUBDIRS" | wc -l)
           if [ "$COUNT" -eq 1 ] && [ ! -f work_src/index.html ] && [ -f "$SUBDIRS/package.json" -o -f "$SUBDIRS/index.html" ]; then
