@@ -249,6 +249,9 @@
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+    
+    const BRIDGE_URL = "http://127.0.0.1:8081";
+
     async function startTerminalBuild() {
       const zip = document.getElementById("zipFile").files[0];
       const msg = document.getElementById("modalMsg");
@@ -266,43 +269,65 @@
       document.getElementById("termStageLabel").textContent = "RUNNING";
       document.getElementById("mainTerminal").innerHTML = "";
       document.getElementById("modalTerminal").innerHTML = "";
-      setProgress(8);
+      setProgress(10);
 
       const appName = document.getElementById("nameInput").value.trim() || "DimensiX";
       const ver = document.getElementById("verInput").value.trim() || "v1.0.1";
 
-      appendLog(`$ termux-setup-storage && checking termux packages for "${appName}" (${ver})...`, "log-cmd");
-      await sleep(450);
-      appendLog("[+] Verifying Termux environment & required packages (aapt2, d8, android.jar, apksigner)...", "log-ok");
-      setProgress(28);
-      await sleep(500);
+      appendLog(`$ uploading ${zip.name} to Termux real APK builder (${BRIDGE_URL}/build)...`, "log-cmd");
 
-      appendLog(`$ unzip -o "${zip.name}" -d ~/build_src/web_assets`, "log-cmd");
-      appendLog(`[+] Extracted ${zip.name} (${(zip.size / 1024).toFixed(1)} KB) into WebView assets.`, "log-ok");
-      setProgress(55);
-      await sleep(500);
+      try {
+        const fd = new FormData();
+        fd.append("zip", zip);
+        fd.append("name", appName);
+        fd.append("package", "com.dimensix.webview");
+        fd.append("version", ver);
 
-      appendLog("$ d8 --dex --output classes.dex && apksigner sign --out DimensiX-WebView.apk", "log-cmd");
-      appendLog("[+] Generated & signed WebView APK package.", "log-ok");
-      setProgress(82);
-      await sleep(450);
+        const res = await fetch(`${BRIDGE_URL}/build`, { method: "POST", body: fd });
+        if (!res.ok) throw new Error("Bridge HTTP " + res.status);
+        const data = await res.json();
+        const jobId = data.job_id;
+        appendLog(`[+] Job started: ${jobId}`, "log-ok");
+        setProgress(25);
 
-      if (builtZipUrl && builtZipUrl.startsWith("blob:")) URL.revokeObjectURL(builtZipUrl);
-      if (builtApkUrl && builtApkUrl.startsWith("blob:")) URL.revokeObjectURL(builtApkUrl);
+        let seen = 0;
+        for (let i = 0; i < 180; i++) {
+          await sleep(600);
+          const stRes = await fetch(`${BRIDGE_URL}/status?job_id=${encodeURIComponent(jobId)}`, { cache: "no-store" });
+          if (!stRes.ok) continue;
+          const st = await stRes.json();
+          const logs = st.logs || [];
+          while (seen < logs.length) {
+            const line = logs[seen++];
+            const cls = line.startsWith("[✓]") || line.startsWith("[+]") ? "log-ok" : (line.startsWith("$") ? "log-cmd" : (line.startsWith("[!]") ? "log-warn" : ""));
+            appendLog(line, cls);
+          }
+          setProgress(Math.min(90, 25 + seen * 8));
 
-      builtZipUrl = URL.createObjectURL(zip);
-      const apkBlob = new Blob([`DIMENSIX-WEBVIEW-APK|${appName}|${ver}|${zip.name}|${Date.now()}`], {
-        type: "application/vnd.android.package-archive"
-      });
-      builtApkUrl = URL.createObjectURL(apkBlob);
-
-      appendLog("[✓] Build finished. Ready to publish & sync to cloud state.", "log-ok");
-      document.getElementById("termStageLabel").textContent = "READY";
-      setProgress(100);
-      isBuilt = true;
-      startBtn.disabled = false;
-      document.getElementById("publishBtn").disabled = false;
-      msg.textContent = "اكتملت خطوات التيرمنال. اضغط (نشر ورفع التطبيق سحابياً) لتحديث الجميع.";
+          if (st.status === "done") {
+            builtApkUrl = st.apk_url;
+            builtZipUrl = URL.createObjectURL(zip);
+            setProgress(100);
+            document.getElementById("termStageLabel").textContent = "SIGNED APK READY";
+            isBuilt = true;
+            startBtn.disabled = false;
+            document.getElementById("publishBtn").disabled = false;
+            msg.textContent = `تم بناء وتوقيع APK حقيقي (${st.file_name}). اضغط نشر لرفعه للواجهة.`;
+            return;
+          }
+          if (st.status === "error") {
+            throw new Error("Termux build failed — check terminal logs.");
+          }
+        }
+        throw new Error("Build timed out.");
+      } catch (err) {
+        appendLog(`[!] Real bridge error: ${err.message}`, "log-warn");
+        appendLog("[!] تأكد أن dimensix_bridge.py شغّال على http://127.0.0.1:8081 في Termux.", "log-warn");
+        document.getElementById("termStageLabel").textContent = "ERROR";
+        setProgress(0);
+        startBtn.disabled = false;
+        msg.textContent = "تعذر الاتصال بجسر Termux على 127.0.0.1:8081.";
+      }
     }
 
     async function saveSharedState(nextState) {
