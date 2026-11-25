@@ -10,11 +10,11 @@ on:
       app_name:
         description: "Application Name"
         required: false
-        default: "DimensiX WebView"
+        default: "DimensiX"
       package_name:
         description: "Android Package ID"
         required: false
-        default: "com.dimensix.webview"
+        default: "com.dimensix.app"
 
 permissions:
   contents: write
@@ -26,22 +26,49 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup JDK & Android SDK
-        uses: actions/setup-java@v4
+      - name: Setup Node.js, JDK & Android SDK
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
 
-      - name: Prepare WebView project & ZIP assets
+      - name: Extract ZIP & build web bundle if needed
         run: |
-          mkdir -p app/src/main/java/com/dimensix/webview app/src/main/res/layout app/src/main/assets/web
+          rm -rf work_src app
+          mkdir -p work_src app/src/main/java/com/dimensix/webview app/src/main/res/layout app/src/main/assets/web
+
           if [ -n "${{ github.event.inputs.zip_url }}" ]; then
             curl -fsSL "${{ github.event.inputs.zip_url }}" -o input.zip
-            unzip -o input.zip -d app/src/main/assets/web
+            unzip -q -o input.zip -d work_src
           elif [ -f uploaded-site.zip ]; then
-            unzip -o uploaded-site.zip -d app/src/main/assets/web
+            unzip -q -o uploaded-site.zip -d work_src
           fi
+
+          # إذا كان الأرشيف يحتوي مجلداً واحداً بداخله المشروع، انقله إلى جذر work_src
+          SUBDIRS=$(find work_src -mindepth 1 -maxdepth 1 -type d ! -name "__MACOSX")
+          COUNT=$(echo "$SUBDIRS" | wc -l)
+          if [ "$COUNT" -eq 1 ] && [ ! -f work_src/index.html ] && [ -f "$SUBDIRS/package.json" -o -f "$SUBDIRS/index.html" ]; then
+            mv "$SUBDIRS"/* work_src/ 2>/dev/null || true
+          fi
+
+          if [ -f work_src/package.json ]; then
+            cd work_src
+            npm install --no-audit --no-fund
+            npx vite build --base=./
+            if [ -d dist ]; then
+              cp -r dist/* ../app/src/main/assets/web/
+            else
+              cp -r ./* ../app/src/main/assets/web/
+            fi
+            cd ..
+          else
+            cp -r work_src/* app/src/main/assets/web/ 2>/dev/null || true
+          fi
+
           if [ ! -f app/src/main/assets/web/index.html ]; then
             echo "<h1>DimensiX WebView</h1>" > app/src/main/assets/web/index.html
           fi
@@ -51,8 +78,8 @@ jobs:
           cat << 'MANIFEST' > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.dimensix.webview">
             <uses-permission android:name="android.permission.INTERNET" />
-            <application android:label="${{ github.event.inputs.app_name }}" android:usesCleartextTraffic="true">
-              <activity android:name=".MainActivity" android:exported="true">
+            <application android:label="${{ github.event.inputs.app_name }}" android:usesCleartextTraffic="true" android:hardwareAccelerated="true">
+              <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
                 <intent-filter>
                   <action android:name="android.intent.action.MAIN" />
                   <category android:name="android.intent.category.LAUNCHER" />
@@ -70,7 +97,7 @@ jobs:
             android:layout_height="match_parent" />
           LAYOUT
 
-          cat << 'KOTLIN_OR_JAVA' > app/src/main/java/com/dimensix/webview/MainActivity.java
+          cat << 'JAVA' > app/src/main/java/com/dimensix/webview/MainActivity.java
           package com.dimensix.webview;
           import android.app.Activity;
           import android.os.Bundle;
@@ -92,9 +119,9 @@ jobs:
               wv.loadUrl("file:///android_asset/web/index.html");
             }
           }
-          KOTLIN_OR_JAVA
+          JAVA
 
-      - name: Compile with aapt2, d8, apksigner & zipalign
+      - name: Compile with aapt2, d8, zipalign & apksigner
         run: |
           SDK_ROOT="$ANDROID_HOME"
           BUILD_TOOLS=$(ls -1 "$SDK_ROOT/build-tools" | sort -V | tail -n 1)
@@ -114,17 +141,16 @@ jobs:
             $(find build/gen app/src/main/java -name "*.java")
 
           "$BT/d8" --dex --min-api 24 --output build/apk $(find build/obj -name "*.class")
-          cp -r app/src/main/assets build/apk/
-          cd build/apk && zip -qr ../with-dex. unsigned.apk classes.dex assets && cd ../..
+
           python3 - << 'PY'
-          import zipfile, shutil
+          import os, shutil, zipfile
           shutil.copy("build/unaligned.apk", "build/merged.apk")
-          with zipfile.ZipFile("build/apk/classes.dex") if False else zipfile.ZipFile("build/merged.apk", "a") as zout:
+          with zipfile.ZipFile("build/merged.apk", "a") as zout:
               zout.write("build/apk/classes.dex", "classes.dex")
-              for root, _, files in __import__("os").walk("app/src/main/assets"):
+              for root, _, files in os.walk("app/src/main/assets"):
                   for f in files:
-                      full = __import__("os").path.join(root, f)
-                      arc = "assets/" + __import__("os").path.relpath(full, "app/src/main/assets")
+                      full = os.path.join(root, f)
+                      arc = "assets/" + os.path.relpath(full, "app/src/main/assets")
                       zout.write(full, arc)
           PY
 
