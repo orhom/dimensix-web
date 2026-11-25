@@ -40,20 +40,28 @@ jobs:
 
       - name: Extract ZIP & build web bundle if needed
         run: |
-          rm -rf work_src app
+          set -e
+          rm -rf work_src app input.zip
           mkdir -p work_src app/src/main/java/com/dimensix/webview app/src/main/res/layout app/src/main/assets/web
 
           if [ -n "${{ github.event.inputs.zip_url }}" ]; then
             curl -fsSL "${{ github.event.inputs.zip_url }}" -o input.zip
-            unzip -q -o input.zip -d work_src
+            unzip -q -o input.zip -d work_src || true
           elif [ -f uploaded-site.zip ]; then
-            unzip -q -o uploaded-site.zip -d work_src
+            unzip -q -o uploaded-site.zip -d work_src || true
           fi
 
-          SUBDIRS=$(find work_src -mindepth 1 -maxdepth 1 -type d ! -name "__MACOSX")
-          COUNT=$(echo "$SUBDIRS" | wc -l)
-          if [ "$COUNT" -eq 1 ] && [ ! -f work_src/index.html ] && [ -f "$SUBDIRS/package.json" -o -f "$SUBDIRS/index.html" ]; then
-            mv "$SUBDIRS"/* work_src/ 2>/dev/null || true
+          shopt -s dotglob nullglob
+          SUBDIRS=()
+          for d in work_src/*; do
+            if [ -d "$d" ] && [ "$(basename "$d")" != "__MACOSX" ]; then
+              SUBDIRS+=("$d")
+            fi
+          done
+
+          if [ "${#SUBDIRS[@]}" -eq 1 ] && [ ! -f work_src/index.html ] && { [ -f "${SUBDIRS[0]}/package.json" ] || [ -f "${SUBDIRS[0]}/index.html" ]; }; then
+            mv "${SUBDIRS[0]}"/* work_src/ || true
+            rmdir "${SUBDIRS[0]}" 2>/dev/null || true
           fi
 
           if [ -f work_src/package.json ]; then
@@ -67,7 +75,7 @@ jobs:
             fi
             cd ..
           else
-            cp -r work_src/* app/src/main/assets/web/ 2>/dev/null || true
+            cp -r work_src/* app/src/main/assets/web/ || true
           fi
 
           if [ ! -f app/src/main/assets/web/index.html ]; then
