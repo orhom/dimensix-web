@@ -1,0 +1,147 @@
+name: Build WebView APK from ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_url:
+        description: "Direct URL to ZIP package"
+        required: false
+        default: ""
+      app_name:
+        description: "Application Name"
+        required: false
+        default: "DimensiX WebView"
+      package_name:
+        description: "Android Package ID"
+        required: false
+        default: "com.dimensix.webview"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK & Android SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+
+      - name: Prepare WebView project & ZIP assets
+        run: |
+          mkdir -p app/src/main/java/com/dimensix/webview app/src/main/res/layout app/src/main/assets/web
+          if [ -n "${{ github.event.inputs.zip_url }}" ]; then
+            curl -fsSL "${{ github.event.inputs.zip_url }}" -o input.zip
+            unzip -o input.zip -d app/src/main/assets/web
+          elif [ -f uploaded-site.zip ]; then
+            unzip -o uploaded-site.zip -d app/src/main/assets/web
+          fi
+          if [ ! -f app/src/main/assets/web/index.html ]; then
+            echo "<h1>DimensiX WebView</h1>" > app/src/main/assets/web/index.html
+          fi
+
+      - name: Create AndroidManifest, Layout & MainActivity
+        run: |
+          cat << 'MANIFEST' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.dimensix.webview">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:label="${{ github.event.inputs.app_name }}" android:usesCleartextTraffic="true">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          MANIFEST
+
+          cat << 'LAYOUT' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <WebView xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+          LAYOUT
+
+          cat << 'KOTLIN_OR_JAVA' > app/src/main/java/com/dimensix/webview/MainActivity.java
+          package com.dimensix.webview;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              setContentView(R.layout.activity_main);
+              WebView wv = findViewById(R.id.webview);
+              WebSettings s = wv.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setAllowFileAccess(true);
+              wv.setWebViewClient(new WebViewClient());
+              wv.loadUrl("file:///android_asset/web/index.html");
+            }
+          }
+          KOTLIN_OR_JAVA
+
+      - name: Compile with aapt2, d8, apksigner & zipalign
+        run: |
+          SDK_ROOT="$ANDROID_HOME"
+          BUILD_TOOLS=$(ls -1 "$SDK_ROOT/build-tools" | sort -V | tail -n 1)
+          PLATFORM=$(ls -1 "$SDK_ROOT/platforms" | sort -V | tail -n 1)
+          BT="$SDK_ROOT/build-tools/$BUILD_TOOLS"
+          ANDROID_JAR="$SDK_ROOT/platforms/$PLATFORM/android.jar"
+
+          mkdir -p build/gen build/obj build/apk
+          "$BT/aapt2" compile --dir app/src/main/res -o build/res.zip
+          "$BT/aapt2" link -o build/unaligned.apk \
+            -I "$ANDROID_JAR" \
+            --manifest app/src/main/AndroidManifest.xml \
+            -R build/res.zip \
+            --java build/gen
+
+          javac -source 17 -target 17 -cp "$ANDROID_JAR" -d build/obj \
+            $(find build/gen app/src/main/java -name "*.java")
+
+          "$BT/d8" --dex --min-api 24 --output build/apk $(find build/obj -name "*.class")
+          cp -r app/src/main/assets build/apk/
+          cd build/apk && zip -qr ../with-dex. unsigned.apk classes.dex assets && cd ../..
+          python3 - << 'PY'
+          import zipfile, shutil
+          shutil.copy("build/unaligned.apk", "build/merged.apk")
+          with zipfile.ZipFile("build/apk/classes.dex") if False else zipfile.ZipFile("build/merged.apk", "a") as zout:
+              zout.write("build/apk/classes.dex", "classes.dex")
+              for root, _, files in __import__("os").walk("app/src/main/assets"):
+                  for f in files:
+                      full = __import__("os").path.join(root, f)
+                      arc = "assets/" + __import__("os").path.relpath(full, "app/src/main/assets")
+                      zout.write(full, arc)
+          PY
+
+          "$BT/zipalign" -p -f 4 build/merged.apk build/aligned.apk
+          keytool -genkeypair -v -keystore build/debug.keystore \
+            -storepass android -keypass android -alias androidkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=DimensiX,O=DimensiX,C=US"
+          "$BT/apksigner" sign --ks build/debug.keystore \
+            --ks-pass pass:android --key-pass pass:android \
+            --out build/DimensiX-WebView.apk build/aligned.apk
+
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: DimensiX WebView APK #${{ github.run_number }}
+          files: build/DimensiX-WebView.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
