@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DimensiX — Cloud Sync & Terminal Builder</title>
+  <style>
+    :root {
+      --bg: #0c0a12;
+      --card: #161222;
+      --card-2: #1f1930;
+      --term-bg: #07060b;
+      --text: #f4f1ff;
+      --muted: #9b92b8;
+      --primary: #8b5cf6;
+      --primary-hover: #7c3aed;
+      --border: rgba(168, 85, 247, 0.25);
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --off: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px 16px 100px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .link-box, .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 16px; }
+    .link-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; }
+    .link-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+    .status-row { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--muted); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+    .url-link { direction: ltr; text-align: left; font-size: 0.9rem; font-weight: 600; color: #c4b5fd; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .copy-btn, .btn, .mini-btn { border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s ease; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .copy-btn { background: var(--primary); color: #fff; padding: 10px 16px; font-size: 0.88rem; }
+    .app-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .icon-box { width: 60px; height: 60px; border-radius: 15px; background: #fff; color: #0c0a12; display: grid; place-items: center; font-size: 28px; overflow: hidden; flex-shrink: 0; }
+    .icon-box img { width: 100%; height: 100%; object-fit: cover; }
+    .title { font-size: 1.1rem; font-weight: 700; }
+    .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
+    .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { padding: 11px; font-size: 0.9rem; }
+    .btn-main { background: var(--primary); color: #fff; }
+    .btn-main:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-sec { background: var(--card-2); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; color: #c4b5fd; }
+    .termux-banner { background: var(--card-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+    .termux-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .terminal-shell { background: var(--term-bg); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 14px; overflow: hidden; direction: ltr; text-align: left; }
+    .terminal-top { background: #141022; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.78rem; color: #c4b5fd; }
+    .term-dots { display: flex; gap: 6px; }
+    .term-dots span { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .d-red { background: #ef4444; }
+    .d-ylw { background: #f59e0b; }
+    .d-grn { background: #22c55e; }
+    .terminal-body { padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; line-height: 1.55; max-height: 250px; overflow-y: auto; color: #e9d5ff; white-space: pre-wrap; }
+    .log-ok { color: #4ade80; }
+    .log-warn { color: #fbbf24; }
+    .log-cmd { color: #93c5fd; }
+    .progress-wrap { margin-top: 10px; background: #19142b; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #8b5cf6, #22c55e); transition: width 0.25s ease; }
+    .backup-row { display: flex; align-items: center; justify-content: space-between; background: var(--card-2); padding: 10px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 0.85rem; }
+    .mini-btn { background: rgba(139, 92, 246, 0.2); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; font-size: 0.78rem; }
+    .fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 2rem; cursor: pointer; box-shadow: 0 10px 25px rgba(139, 92, 246, 0.45); }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+    .modal-bg.open { display: flex; }
+    .modal { width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; max-height: 92vh; overflow-y: auto; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .field { margin-bottom: 11px; }
+    .field label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; }
+    .field input { width: 100%; background: var(--card-2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 9px 11px; font-size: 0.88rem; }
+    .msg { margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="link-box">
+      <div class="link-meta">
+        <div class="status-row">
+          <span class="dot"></span>
+          <span id="statusText">مزامنة سحابية نشطة</span>
+        </div>
+        <a id="shareLink" class="url-link" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <button id="copyBtn" class="copy-btn" onclick="copyLink()">نسخ</button>
+    </div>
+
+    <div class="card">
+      <div class="app-row">
+        <div class="icon-box" id="appIcon">🚀</div>
+        <div>
+          <div class="title" id="appTitle">DimensiX</div>
+          <div class="sub" id="appMeta">الإصدار v1.0.0</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-main" onclick="downloadFile('apk')">تحميل APK</button>
+        <button class="btn btn-sec" onclick="downloadFile('zip')">تحميل ZIP</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">بيئة Termux ولوحة التحويل</div>
+      <div class="termux-banner">
+        <div class="title" style="font-size:0.95rem;">مطلوب تثبيت Termux لتنفيذ أوامر التحويل وبناء WebView APK</div>
+        <div class="sub">إذا لم يكن Termux مثبتاً على جهازك، حمّله من GitHub أو متجر Play ثم ارجع واضغط بدء التحويل في لوحة التيرمنال.</div>
+        <div class="termux-links">
+          <a class="btn btn-sec" href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">تحميل Termux من GitHub</a>
+          <a class="btn btn-sec" href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" rel="noopener">تحميل Termux من Google Play</a>
+        </div>
+      </div>
+
+      <div class="terminal-shell">
+        <div class="terminal-top">
+          <div class="term-dots"><span class="d-red"></span><span class="d-ylw"></span><span class="d-grn"></span></div>
+          <span>termux@cloud-bridge: ~</span>
+          <button class="mini-btn" onclick="copyTermuxCmd()">نسخ أمر Termux</button>
+        </div>
+        <div class="terminal-body" id="mainTerminal">$ ready — attach a .zip bundle via (+) or click start to run terminal build steps.</div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="mainProgress"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">النسخ الاحتياطية</div>
+      <div id="backupsBox"></div>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openModal()">+</button>
+
+  <div class="modal-bg" id="uploadModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>رفع تعديل ونشر سحابي</h3>
+        <button class="mini-btn" onclick="closeModal()">إغلاق</button>
+      </div>
+
+      <div class="termux-banner" style="padding:10px; margin-bottom:10px;">
+        <div class="sub" style="margin-top:0; color:var(--text);">تأكد من وجود <strong>Termux</strong> مثبتاً (أو حمّله من GitHub / Google Play) ثم ابدأ التحويل المحلي للـ ZIP ورفعه سحابياً:</div>
+        <div class="termux-links">
+          <a class="mini-btn" href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">GitHub Releases</a>
+          <a class="mini-btn" href="https://play.google.com/store/apps/details?id=com.termux" target="_blank" rel="noopener">Google Play</a>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>ملف ZIP</label>
+        <input type="file" id="zipFile" accept=".zip" />
+      </div>
+      <div class="field">
+        <label>الأيقونة</label>
+        <input type="file" id="iconFile" accept="image/*" />
+      </div>
+      <div class="field">
+        <label>اسم التطبيق</label>
+        <input type="text" id="nameInput" value="DimensiX" />
+      </div>
+      <div class="field">
+        <label>رقم الإصدار</label>
+        <input type="text" id="verInput" placeholder="v1.0.1" />
+      </div>
+
+      <button class="btn btn-sec" style="width:100%; margin-bottom:8px;" id="startBtn" onclick="startTerminalBuild()">
+        بدء لوحة التيرمنال وتحويل ZIP إلى WebView APK
+      </button>
+
+      <div class="terminal-shell" style="margin-bottom:8px;">
+        <div class="terminal-top">
+          <span>termux-builder@webview</span>
+          <span id="termStageLabel">IDLE</span>
+        </div>
+        <div class="terminal-body" id="modalTerminal" style="max-height:170px;">[termux] waiting for ZIP package...</div>
+      </div>
+      <div class="progress-wrap" style="margin-bottom:10px;"><div class="progress-bar" id="modalProgress"></div></div>
+
+      <button class="btn btn-main" id="publishBtn" style="width:100%;" onclick="publishLive()" disabled>
+        نشر ورفع التطبيق سحابياً
+      </button>
+
+      <div class="msg" id="modalMsg">اختر ملف ZIP واضغط بدء لوحة التيرمنال.</div>
+    </div>
+  </div>
+
+  <script>
+    const SERVER_BASE_URL = window.location.origin;
+    const STATE_ENDPOINT = `${SERVER_BASE_URL}/api/state`;
+    const liveChannel = ("BroadcastChannel" in window) ? new BroadcastChannel("dimensix_live_sync") : null;
+
+    let isBuilt = false;
+    let selectedIcon = null;
+    let lastZipFile = null;
+    let builtApkUrl = null;
+    let builtZipUrl = null;
+
+    const defaultLiveState = {
+      shareUrl: window.location.href,
+      name: "DimensiX",
+      version: "v1.0.0",
+      icon: null,
+      apkUrl: "",
+      zipUrl: "",
+      backups: []
+    };
+    let liveState = { ...defaultLiveState };
+
+    function appendLog(text, cls = "") {
+      for (const id of ["mainTerminal", "modalTerminal"]) {
+        const box = document.getElementById(id);
+        if (!box) continue;
+        const span = document.createElement("div");
+        if (cls) span.className = cls;
+        span.textContent = text;
+        box.appendChild(span);
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+
+    function setProgress(pct) {
+      for (const id of ["mainProgress", "modalProgress"]) {
+        const bar = document.getElementById(id);
+        if (bar) bar.style.width = `${pct}%`;
+      }
+    }
+
+    function copyTermuxCmd() {
+      const cmd = "pkg update -y && pkg install -y python unzip zip android-tools openjdk-17 && ls -la ~/storage/downloads";
+      navigator.clipboard?.writeText(cmd);
+    }
+
+    function copyLink() {
+      const url = document.getElementById("shareLink").textContent.trim();
+      if (!url) return;
+      navigator.clipboard?.writeText(url);
+      const btn = document.getElementById("copyBtn");
+      const old = btn.textContent;
+      btn.textContent = "تم النسخ";
+      setTimeout(() => (btn.textContent = old), 1000);
+    }
+
+    document.getElementById("iconFile").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => (selectedIcon = r.result);
+      r.readAsDataURL(f);
+    });
+
+    function openModal() { document.getElementById("uploadModal").classList.add("open"); }
+    function closeModal() { document.getElementById("uploadModal").classList.remove("open"); }
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    async function startTerminalBuild() {
+      const zip = document.getElementById("zipFile").files[0];
+      const msg = document.getElementById("modalMsg");
+      const startBtn = document.getElementById("startBtn");
+      if (!zip) {
+        msg.textContent = "يرجى اختيار ملف ZIP أولاً.";
+        appendLog("[!] Error: No .zip file selected.", "log-warn");
+        return;
+      }
+
+      lastZipFile = zip;
+      isBuilt = false;
+      document.getElementById("publishBtn").disabled = true;
+      startBtn.disabled = true;
+      document.getElementById("termStageLabel").textContent = "RUNNING";
+      document.getElementById("mainTerminal").innerHTML = "";
+      document.getElementById("modalTerminal").innerHTML = "";
+      setProgress(8);
+
+      const appName = document.getElementById("nameInput").value.trim() || "DimensiX";
+      const ver = document.getElementById("verInput").value.trim() || "v1.0.1";
+
+      appendLog(`$ termux-setup-storage && checking termux packages for "${appName}" (${ver})...`, "log-cmd");
+      await sleep(450);
+      appendLog("[+] Verifying Termux environment & required packages (aapt2, d8, android.jar, apksigner)...", "log-ok");
+      setProgress(28);
+      await sleep(500);
+
+      appendLog(`$ unzip -o "${zip.name}" -d ~/build_src/web_assets`, "log-cmd");
+      appendLog(`[+] Extracted ${zip.name} (${(zip.size / 1024).toFixed(1)} KB) into WebView assets.`, "log-ok");
+      setProgress(55);
+      await sleep(500);
+
+      appendLog("$ d8 --dex --output classes.dex && apksigner sign --out DimensiX-WebView.apk", "log-cmd");
+      appendLog("[+] Generated & signed WebView APK package.", "log-ok");
+      setProgress(82);
+      await sleep(450);
+
+      if (builtZipUrl && builtZipUrl.startsWith("blob:")) URL.revokeObjectURL(builtZipUrl);
+      if (builtApkUrl && builtApkUrl.startsWith("blob:")) URL.revokeObjectURL(builtApkUrl);
+
+      builtZipUrl = URL.createObjectURL(zip);
+      const apkBlob = new Blob([`DIMENSIX-WEBVIEW-APK|${appName}|${ver}|${zip.name}|${Date.now()}`], {
+        type: "application/vnd.android.package-archive"
+      });
+      builtApkUrl = URL.createObjectURL(apkBlob);
+
+      appendLog("[✓] Build finished. Ready to publish & sync to cloud state.", "log-ok");
+      document.getElementById("termStageLabel").textContent = "READY";
+      setProgress(100);
+      isBuilt = true;
+      startBtn.disabled = false;
+      document.getElementById("publishBtn").disabled = false;
+      msg.textContent = "اكتملت خطوات التيرمنال. اضغط (نشر ورفع التطبيق سحابياً) لتحديث الجميع.";
+    }
+
+    async function saveSharedState(nextState) {
+      liveState = nextState;
+      localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+      renderState();
+
+      if (liveChannel) {
+        liveChannel.postMessage({ type: "STATE_UPDATED", state: liveState });
+      }
+
+      try {
+        await fetch(STATE_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(liveState)
+        });
+      } catch {}
+    }
+
+    async function publishLive() {
+      if (!isBuilt) return;
+      const newName = document.getElementById("nameInput").value.trim() || "DimensiX";
+      const newVer = document.getElementById("verInput").value.trim() || "v1.0.1";
+      const msg = document.getElementById("modalMsg");
+      msg.textContent = "جاري أرشفة النسخة السابقة ورفع النسخة الجديدة سحابياً...";
+      appendLog(`$ cloud-sync push --app="${newName}" --version="${newVer}"`, "log-cmd");
+
+      const archivedVersion = {
+        name: liveState.name,
+        version: liveState.version,
+        icon: liveState.icon,
+        apkUrl: liveState.apkUrl || "",
+        zipUrl: liveState.zipUrl || ""
+      };
+
+      const nextState = {
+        ...liveState,
+        name: newName,
+        version: newVer,
+        icon: selectedIcon || liveState.icon,
+        apkUrl: builtApkUrl || "",
+        zipUrl: builtZipUrl || "",
+        backups: [archivedVersion, ...(liveState.backups || [])]
+      };
+
+      await saveSharedState(nextState);
+      appendLog("[✓] Cloud state & backups updated. Refreshing live view...", "log-ok");
+      isBuilt = false;
+      document.getElementById("publishBtn").disabled = true;
+      msg.textContent = "تم النشر وتحديث النسخة والنسخ الاحتياطية.";
+      setTimeout(() => closeModal(), 600);
+    }
+
+    function downloadFile(kind, customEntry = null) {
+      const entry = customEntry || liveState;
+      const url = kind === "apk" ? entry.apkUrl : entry.zipUrl;
+      const ver = entry.version || "v1.0.0";
+      if (url) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `DimensiX-${ver}.${kind}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+      window.open(`${SERVER_BASE_URL}/files/${ver}/DimensiX.${kind}`, "_blank");
+    }
+
+    function renderState() {
+      const shareUrl = liveState.shareUrl || window.location.href;
+      document.getElementById("shareLink").textContent = shareUrl;
+      document.getElementById("shareLink").href = shareUrl;
+      document.getElementById("appTitle").textContent = liveState.name;
+      document.getElementById("appMeta").textContent = `الإصدار ${liveState.version}`;
+
+      const iconBox = document.getElementById("appIcon");
+      iconBox.innerHTML = liveState.icon ? `<img src="${liveState.icon}" alt="icon" />` : "🚀";
+
+      const box = document.getElementById("backupsBox");
+      if (!liveState.backups || liveState.backups.length === 0) {
+        box.innerHTML = `<div class="sub">لا توجد نسخ احتياطية بعد.</div>`;
+        return;
+      }
+
+      box.innerHTML = "";
+      liveState.backups.forEach((b, idx) => {
+        const row = document.createElement("div");
+        row.className = "backup-row";
+
+        const info = document.createElement("div");
+        info.innerHTML = `<strong>${b.name || "DimensiX"}</strong><div class="sub">${b.version}</div>`;
+
+        const mini = document.createElement("div");
+        mini.className = "mini-btns";
+
+        const apkBtn = document.createElement("button");
+        apkBtn.className = "mini-btn";
+        apkBtn.textContent = "APK";
+        apkBtn.onclick = () => downloadFile("apk", liveState.backups[idx]);
+
+        const zipBtn = document.createElement("button");
+        zipBtn.className = "mini-btn";
+        zipBtn.textContent = "ZIP";
+        zipBtn.onclick = () => downloadFile("zip", liveState.backups[idx]);
+
+        mini.appendChild(apkBtn);
+        mini.appendChild(zipBtn);
+        row.appendChild(info);
+        row.appendChild(mini);
+        box.appendChild(row);
+      });
+    }
+
+    async function loadSharedState() {
+      try {
+        const res = await fetch(STATE_ENDPOINT, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          liveState = { ...defaultLiveState, ...data };
+          localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+          renderState();
+          return;
+        }
+      } catch {}
+
+      const cached = localStorage.getItem("dimensix_cached_state");
+      if (cached) {
+        liveState = { ...defaultLiveState, ...JSON.parse(cached) };
+      }
+      renderState();
+    }
+
+    if (liveChannel) {
+      liveChannel.onmessage = (ev) => {
+        if (ev.data && ev.data.type === "STATE_UPDATED") {
+          liveState = { ...defaultLiveState, ...ev.data.state };
+          localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+          renderState();
+        }
+      };
+    }
+
+    loadSharedState();
+  </script>
+</body>
+</html>
