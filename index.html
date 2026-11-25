@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DimensiX — Link & Live Sync</title>
+  <style>
+    :root {
+      --bg: #0c0a12;
+      --card: #161222;
+      --card-2: #1f1930;
+      --text: #f4f1ff;
+      --muted: #9b92b8;
+      --primary: #8b5cf6;
+      --primary-hover: #7c3aed;
+      --border: rgba(168, 85, 247, 0.25);
+      --disabled-bg: #2a2833;
+      --disabled-text: #6f6c7d;
+      --ok: #22c55e;
+      --off: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px 16px 100px;
+    }
+
+    .wrap {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* شريط الرابط فقط + زر نسخ */
+    .link-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .link-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--ok);
+      flex-shrink: 0;
+    }
+
+    .url-link {
+      direction: ltr;
+      text-align: left;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #c4b5fd;
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .url-link:hover {
+      text-decoration: underline;
+    }
+
+    .copy-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: 0.2s ease;
+    }
+
+    .copy-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    /* حالة السيرفر المنطفي: الرابط رمادي وزر النسخ رمادي */
+    body.server-offline .dot {
+      background: var(--off);
+    }
+
+    body.server-offline .url-link {
+      color: var(--disabled-text);
+      pointer-events: none;
+      text-decoration: none;
+    }
+
+    body.server-offline .copy-btn,
+    .copy-btn:disabled {
+      background: var(--disabled-bg);
+      color: var(--disabled-text);
+      cursor: not-allowed;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .app-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .icon-box {
+      width: 60px;
+      height: 60px;
+      border-radius: 15px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 28px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .icon-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .sub {
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-main {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-sec {
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #c4b5fd;
+    }
+
+    .backup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-2);
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+
+    .backup-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .mini-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-btn {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(139, 92, 246, 0.45);
+    }
+
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+
+    .modal-bg.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font-size: 0.88rem;
+    }
+
+    .msg {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- الرابط فقط + زر نسخ -->
+    <div class="link-box">
+      <div class="link-meta">
+        <div class="status-row">
+          <span class="dot"></span>
+          <span id="statusText">السيرفر مشتغل</span>
+        </div>
+        <a id="shareLink" class="url-link" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <button id="copyBtn" class="copy-btn" onclick="copyLink()">نسخ</button>
+    </div>
+
+    <!-- النسخة الحالية -->
+    <div class="card">
+      <div class="app-row">
+        <div class="icon-box" id="appIcon">🚀</div>
+        <div>
+          <div class="title" id="appTitle">DimensiX</div>
+          <div class="sub" id="appMeta">الإصدار v1.0.0</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-main" onclick="downloadFile('apk')">تحميل APK</button>
+        <button class="btn btn-sec" onclick="downloadFile('zip')">تحميل ZIP</button>
+      </div>
+    </div>
+
+    <!-- النسخ الاحتياطية -->
+    <div class="card">
+      <div class="section-title">النسخ الاحتياطية</div>
+      <div id="backupsBox"></div>
+    </div>
+  </div>
+
+  <!-- زر + -->
+  <button class="fab" onclick="openModal()">+</button>
+
+  <!-- نافذة الرفع والنشر -->
+  <div class="modal-bg" id="uploadModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>رفع تعديل ونشر</h3>
+        <button class="mini-btn" onclick="closeModal()">إغلاق</button>
+      </div>
+
+      <div class="field">
+        <label>ملف ZIP</label>
+        <input type="file" id="zipFile" accept=".zip" />
+      </div>
+
+      <div class="field">
+        <label>الأيقونة</label>
+        <input type="file" id="iconFile" accept="image/*" />
+      </div>
+
+      <div class="field">
+        <label>اسم التطبيق</label>
+        <input type="text" id="nameInput" value="DimensiX" />
+      </div>
+
+      <div class="field">
+        <label>رقم الإصدار</label>
+        <input type="text" id="verInput" placeholder="v1.0.1" />
+      </div>
+
+      <button class="btn btn-sec" style="width:100%; margin-bottom:8px;" onclick="buildLocal()">
+        تحويل إلى WebView APK محلياً
+      </button>
+
+      <button class="btn btn-main" id="publishBtn" style="width:100%;" onclick="publishLive()" disabled>
+        نشر
+      </button>
+
+      <div class="msg" id="modalMsg">اختر ملف ZIP ثم اضغط تحويل إلى WebView APK محلياً.</div>
+    </div>
+  </div>
+
+  <script>
+    // ضع هنا رابط السيرفر / نقطة الحالة (Health) ورابط API المشترك للـ Real-Time
+    const SERVER_BASE_URL = window.location.origin; // مثال: "http://127.0.0.1:8080" أو رابط سيرفرك
+    const HEALTH_ENDPOINT = `${SERVER_BASE_URL}/health`;
+    const STATE_ENDPOINT  = `${SERVER_BASE_URL}/api/state`;
+
+    // قناة Real-Time بين التبويبات المفتوحة على نفس المتصفح/الرابط + مزامنة السيرفر عند Refresh
+    const liveChannel = ("BroadcastChannel" in window)
+      ? new BroadcastChannel("dimensix_live_sync")
+      : null;
+
+    let isBuilt = false;
+    let selectedIcon = null;
+
+    const defaultLiveState = {
+      shareUrl: window.location.href,
+      name: "DimensiX",
+      version: "v1.0.0",
+      icon: null,
+      backups: []
+    };
+
+    let liveState = { ...defaultLiveState };
+
+    function setShareLinkValue(url) {
+      const a = document.getElementById("shareLink");
+      a.textContent = url;
+      a.href = url;
+    }
+
+    function setServerOnline(online) {
+      const copyBtn = document.getElementById("copyBtn");
+      const statusText = document.getElementById("statusText");
+      if (online) {
+        document.body.classList.remove("server-offline");
+        copyBtn.disabled = false;
+        statusText.textContent = "السيرفر مشتغل";
+      } else {
+        document.body.classList.add("server-offline");
+        copyBtn.disabled = true;
+        statusText.textContent = "السيرفر منطفي";
+      }
+    }
+
+    async function checkServerStatus() {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1800);
+        const res = await fetch(HEALTH_ENDPOINT, { cache: "no-store", signal: controller.signal });
+        clearTimeout(timer);
+        setServerOnline(res.ok);
+        return res.ok;
+      } catch {
+        setServerOnline(false);
+        return false;
+      }
+    }
+
+    // جلب أحدث حالة مشتركة من السيرفر عند فتح الصفحة أو عمل Refresh
+    async function loadSharedState() {
+      try {
+        const res = await fetch(STATE_ENDPOINT, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          liveState = { ...defaultLiveState, ...data };
+          localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+          renderState();
+          return;
+        }
+      } catch {}
+
+      const cached = localStorage.getItem("dimensix_cached_state");
+      if (cached) {
+        liveState = { ...defaultLiveState, ...JSON.parse(cached) };
+      }
+      renderState();
+    }
+
+    // حفظ ونشر الحالة الجديدة للسيرفر وللمستمعين حتى تظهر بعد الـ Refresh
+    async function saveSharedState(nextState) {
+      liveState = nextState;
+      localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+      renderState();
+
+      if (liveChannel) {
+        liveChannel.postMessage({ type: "STATE_UPDATED", state: liveState });
+      }
+
+      try {
+        await fetch(STATE_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(liveState)
+        });
+      } catch {}
+    }
+
+    function copyLink() {
+      if (document.body.classList.contains("server-offline")) return;
+      const url = document.getElementById("shareLink").textContent.trim();
+      if (!url) return;
+      navigator.clipboard?.writeText(url);
+      const btn = document.getElementById("copyBtn");
+      const old = btn.textContent;
+      btn.textContent = "تم النسخ";
+      setTimeout(() => (btn.textContent = old), 1000);
+    }
+
+    document.getElementById("iconFile").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => (selectedIcon = r.result);
+      r.readAsDataURL(f);
+    });
+
+    function openModal() {
+      document.getElementById("uploadModal").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("uploadModal").classList.remove("open");
+    }
+
+    async function buildLocal() {
+      const zip = document.getElementById("zipFile").files[0];
+      const msg = document.getElementById("modalMsg");
+      if (!zip) {
+        msg.textContent = "يرجى اختيار ملف ZIP أولاً.";
+        return;
+      }
+      msg.textContent = "جاري البناء المحلي وتحويله إلى WebView APK...";
+      try {
+        const fd = new FormData();
+        fd.append("zip", zip);
+        fd.append("name", document.getElementById("nameInput").value.trim() || "DimensiX");
+        fd.append("version", document.getElementById("verInput").value.trim() || "v1.0.1");
+        if (document.getElementById("iconFile").files[0]) {
+          fd.append("icon", document.getElementById("iconFile").files[0]);
+        }
+        await fetch(`${SERVER_BASE_URL}/api/build-local`, { method: "POST", body: fd });
+      } catch {}
+
+      isBuilt = true;
+      document.getElementById("publishBtn").disabled = false;
+      msg.textContent = "تم البناء المحلي بنجاح. اضغط نشر.";
+    }
+
+    async function publishLive() {
+      if (!isBuilt) return;
+      const newName = document.getElementById("nameInput").value.trim() || "DimensiX";
+      const newVer = document.getElementById("verInput").value.trim() || "v1.0.1";
+      const msg = document.getElementById("modalMsg");
+      msg.textContent = "جاري أرشفة النسخة القديمة واستبدالها بالنسخة الجديدة...";
+
+      const archivedVersion = {
+        name: liveState.name,
+        version: liveState.version,
+        icon: liveState.icon
+      };
+
+      const nextState = {
+        ...liveState,
+        name: newName,
+        version: newVer,
+        icon: selectedIcon || liveState.icon,
+        backups: [archivedVersion, ...(liveState.backups || [])]
+      };
+
+      await saveSharedState(nextState);
+      isBuilt = false;
+      document.getElementById("publishBtn").disabled = true;
+      msg.textContent = "تم النشر وتحديث النسخة.";
+      setTimeout(() => closeModal(), 600);
+    }
+
+    function downloadFile(kind, ver = liveState.version) {
+      const ext = kind === "apk" ? "apk" : "zip";
+      window.open(`${SERVER_BASE_URL}/files/${ver}/DimensiX.${ext}`, "_blank");
+    }
+
+    function renderState() {
+      setShareLinkValue(liveState.shareUrl || window.location.href);
+      document.getElementById("appTitle").textContent = liveState.name;
+      document.getElementById("appMeta").textContent = `الإصدار ${liveState.version}`;
+
+      const iconBox = document.getElementById("appIcon");
+      iconBox.innerHTML = liveState.icon
+        ? `<img src="${liveState.icon}" alt="icon" />`
+        : "🚀";
+
+      const box = document.getElementById("backupsBox");
+      if (!liveState.backups || liveState.backups.length === 0) {
+        box.innerHTML = `<div class="sub">لا توجد نسخ احتياطية بعد.</div>`;
+        return;
+      }
+
+      box.innerHTML = liveState.backups.map((b) => `
+        <div class="backup-row">
+          <div>
+            <strong>${b.name || "DimensiX"}</strong>
+            <div class="sub">${b.version}</div>
+          </div>
+          <div class="mini-btns">
+            <button class="mini-btn" onclick="downloadFile('apk', '${b.version}')">APK</button>
+            <button class="mini-btn" onclick="downloadFile('zip', '${b.version}')">ZIP</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    if (liveChannel) {
+      liveChannel.onmessage = (ev) => {
+        if (ev.data && ev.data.type === "STATE_UPDATED") {
+          liveState = { ...defaultLiveState, ...ev.data.state };
+          localStorage.setItem("dimensix_cached_state", JSON.stringify(liveState));
+          renderState();
+        }
+      };
+    }
+
+    setShareLinkValue(window.location.href);
+    checkServerStatus();
+    loadSharedState();
+    setInterval(checkServerStatus, 4000);
+  </script>
+</body>
+</html>
